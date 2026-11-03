@@ -1,0 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+ultralytics
+streamlit
+pydeck
+pandas
+opencv-python-headless
+pytesseract
+pillow
