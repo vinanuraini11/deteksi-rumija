@@ -27,6 +27,55 @@ DB_PATH = ROOT / "hasil_deteksi.db"                  # database hasil deteksi (t
 
 st.set_page_config(page_title="Deteksi Pemanfaatan Rumija", page_icon="🛣️", layout="wide")
 
+# ---------------------------------------------------------------------------
+# Tampilan
+# ---------------------------------------------------------------------------
+st.markdown("""
+<style>
+.block-container {padding-top: 3.5rem; max-width: 1200px;}
+.hero {
+    background: linear-gradient(120deg, #123A5E 0%, #1F5F8B 60%, #2E86AB 100%);
+    border-radius: 16px; padding: 28px 32px; margin-bottom: 1.4rem; color: #FFFFFF;
+}
+.hero .ikon {font-size: 2.2rem; line-height: 1;}
+.hero h1 {color: #FFFFFF; font-size: 2rem; margin: .4rem 0 .3rem 0; padding: 0;}
+.hero p {color: #DCE9F5; font-size: 1.02rem; margin: 0; max-width: 820px;}
+.hero .lencana {margin-top: .9rem;}
+.hero .lencana span {
+    display: inline-block; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28);
+    border-radius: 999px; padding: 3px 12px; margin: 0 6px 6px 0; font-size: .82rem; color: #FFFFFF;
+}
+.langkah {
+    background: #FFFFFF; border: 1px solid #DDE5EE; border-radius: 14px; padding: 18px 20px; height: 100%;
+    box-shadow: 0 1px 3px rgba(18,58,94,.06);
+}
+.langkah .no {
+    display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+    border-radius: 50%; background: #1F5F8B; color: #FFFFFF; font-weight: 700; margin-bottom: .5rem;
+}
+.langkah b {display: block; color: #123A5E; margin-bottom: .2rem;}
+.langkah span {color: #4A5A6A; font-size: .92rem;}
+[data-testid="stMetric"] {
+    background: #FFFFFF; border: 1px solid #DDE5EE; border-left: 5px solid #1F5F8B;
+    border-radius: 12px; padding: 14px 18px; box-shadow: 0 1px 3px rgba(18,58,94,.06);
+}
+[data-testid="stMetricValue"] {color: #123A5E;}
+[data-testid="stSidebar"] h1 {font-size: 1.45rem;}
+</style>
+""", unsafe_allow_html=True)
+
+
+def kepala(ikon, judul, deskripsi, lencana=()):
+    """Menampilkan banner judul di bagian atas setiap halaman."""
+    isi_lencana = "".join(f"<span>{x}</span>" for x in lencana)
+    st.markdown(f"""
+    <div class="hero">
+        <div class="ikon">{ikon}</div>
+        <h1>{judul}</h1>
+        <p>{deskripsi}</p>
+        {f'<div class="lencana">{isi_lencana}</div>' if lencana else ''}
+    </div>""", unsafe_allow_html=True)
+
 
 # ---------------------------------------------------------------------------
 # Model
@@ -75,6 +124,7 @@ if "hasil" not in st.session_state:
 # Sidebar
 # ---------------------------------------------------------------------------
 st.sidebar.title("🛣️ Deteksi Rumija")
+st.sidebar.caption("Dinas PU Bina Marga Provinsi Jawa Timur")
 halaman = st.sidebar.radio("Menu", ["Deteksi", "Peta", "Riwayat", "Tentang Model"])
 st.sidebar.divider()
 conf = st.sidebar.slider("Ambang keyakinan (confidence)", 0.05, 0.90, 0.25, 0.05,
@@ -129,9 +179,21 @@ def proses_foto(nama, data_bytes):
 
 
 if halaman == "Deteksi":
-    st.title("Deteksi Pemanfaatan Rumija")
-    st.write("Unggah foto survei jalan untuk mendeteksi **reklame** dan **tiang utilitas** secara otomatis. "
-             "Koordinat lokasi dibaca dari teks *overlay* pada foto atau dari data GPS kamera.")
+    kepala("🛣️", "Deteksi Pemanfaatan Rumija",
+           "Unggah foto survei jalan untuk mendeteksi reklame dan tiang utilitas secara otomatis. "
+           "Koordinat lokasi dibaca dari teks pada foto atau dari data GPS kamera.",
+           ["Model YOLO11n", "Pembacaan koordinat (OCR)", "Peta lokasi temuan", "Tersimpan di database"])
+
+    if not st.session_state.hasil:
+        l1, l2, l3 = st.columns(3)
+        for kolom, no, judul, ket in [
+            (l1, 1, "Unggah foto", "Pilih satu atau beberapa foto survei jalan (JPG/PNG)."),
+            (l2, 2, "Proses deteksi", "Sistem menandai reklame dan tiang utilitas pada setiap foto."),
+            (l3, 3, "Lihat dan unduh", "Cek lokasi temuan di menu Peta, lalu unduh hasilnya."),
+        ]:
+            kolom.markdown(f'<div class="langkah"><div class="no">{no}</div><b>{judul}</b>'
+                           f'<span>{ket}</span></div>', unsafe_allow_html=True)
+        st.write("")
 
     unggahan = st.file_uploader("Foto survei (JPG/PNG)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
     sudah = {h["file"] for h in st.session_state.hasil}
@@ -184,7 +246,8 @@ if halaman == "Deteksi":
 # Halaman Peta
 # ---------------------------------------------------------------------------
 elif halaman == "Peta":
-    st.title("Peta Lokasi Temuan")
+    kepala("🗺️", "Peta Lokasi Temuan",
+           "Sebaran lokasi foto yang memuat reklame dan tiang utilitas berdasarkan koordinat hasil pembacaan.")
     df = pd.DataFrame(st.session_state.hasil)
     if df.empty or df["lat"].notna().sum() == 0:
         st.info("Belum ada foto yang memiliki koordinat. Proses foto terlebih dahulu di menu **Deteksi**.")
@@ -226,8 +289,7 @@ elif halaman == "Peta":
 # Halaman Riwayat (isi database)
 # ---------------------------------------------------------------------------
 elif halaman == "Riwayat":
-    st.title("Riwayat Deteksi")
-    st.write("Seluruh hasil deteksi yang telah tersimpan di database.")
+    kepala("🗂️", "Riwayat Deteksi", "Seluruh hasil deteksi yang telah tersimpan di database.")
     ringkas = baca_db("ringkasan")
     if ringkas.empty:
         st.info("Database masih kosong. Proses foto terlebih dahulu di menu **Deteksi**.")
@@ -250,7 +312,7 @@ elif halaman == "Riwayat":
 # Halaman Tentang Model
 # ---------------------------------------------------------------------------
 else:
-    st.title("Tentang Model")
+    kepala("🧠", "Tentang Model", "Informasi model deteksi, data pelatihan, dan kinerjanya pada data uji.")
     st.write("Model deteksi menggunakan **YOLO11n** yang dilatih pada foto survei ruas Kasian–Balung (Jember), "
              "Pandaan–Tretes, dan Sampang–Omben dengan dua kelas objek pemanfaatan Rumija:")
     st.markdown("- **Reklame**: papan iklan dan media informasi di tepi jalan (Permen PU No. 20/PRT/M/2010).\n"
