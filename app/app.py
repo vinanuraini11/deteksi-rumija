@@ -60,7 +60,10 @@ def baca_db(tabel):
             return pd.read_sql(f"SELECT * FROM {tabel}", conn)
         except Exception:          # tabel belum ada
             return pd.DataFrame()
-ukuran_default = 960 if "960" in str(lokasi_model) else 640
+
+
+ukuran_default = 640 if "raw" in str(lokasi_model) else 960
+nama_model = "final_960" if lokasi_model.parent.name == "app" else lokasi_model.parent.parent.name
 
 if "hasil" not in st.session_state:
     st.session_state.hasil = []     # ringkasan per foto
@@ -77,7 +80,7 @@ st.sidebar.divider()
 conf = st.sidebar.slider("Ambang keyakinan (confidence)", 0.05, 0.90, 0.25, 0.05,
                          help="Objek dengan skor keyakinan di bawah nilai ini tidak ditampilkan.")
 imgsz = st.sidebar.select_slider("Ukuran citra masukan model", [640, 960, 1280], value=ukuran_default)
-st.sidebar.caption(f"Model: `{lokasi_model.parent.parent.name}`")
+st.sidebar.caption(f"Model: `{nama_model}`")
 if not pc.OCR_TERSEDIA:
     st.sidebar.warning("Tesseract OCR tidak ditemukan, sehingga koordinat dari overlay foto tidak dapat dibaca.")
 if st.sidebar.button("Hapus semua hasil"):
