@@ -60,7 +60,51 @@ st.markdown("""
     border-radius: 12px; padding: 14px 18px; box-shadow: 0 1px 3px rgba(18,58,94,.06);
 }
 [data-testid="stMetricValue"] {color: #123A5E;}
-[data-testid="stSidebar"] h1 {font-size: 1.45rem;}
+/* ---------- Sidebar ---------- */
+[data-testid="stSidebar"] {background: linear-gradient(180deg, #0F2D4A 0%, #16466F 100%);}
+[data-testid="stSidebar"] * {color: #E6EEF6;}
+[data-testid="stSidebar"] hr {border-color: rgba(255,255,255,.15); margin: 1rem 0;}
+.merek {display: flex; align-items: center; gap: 12px; padding: 4px 0 6px 0;}
+.merek .logo {
+    width: 46px; height: 46px; border-radius: 12px; background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.22); display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+}
+.merek b {display: block; font-size: 1.2rem; color: #FFFFFF; line-height: 1.2;}
+.merek span {font-size: .78rem; color: #A9C2DA !important;}
+.label-bagian {
+    font-size: .72rem; font-weight: 700; letter-spacing: .08em; color: #8FB0CF !important;
+    margin: .6rem 0 .3rem 0;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"], [data-testid="stSidebar"] [data-testid="stRadio"] > div,
+[data-testid="stSidebar"] .stButton, [data-testid="stSidebar"] [data-testid="stElementContainer"] {width: 100% !important;}
+[data-testid="stSidebar"] [role="radiogroup"] {gap: 4px; width: 100%;}
+[data-testid="stSidebar"] [role="radiogroup"] > div {width: 100%;}
+[data-testid="stSidebar"] [role="radiogroup"] label {
+    display: flex; width: 100%; padding: 9px 12px; border-radius: 10px; margin: 0; transition: background .15s;
+    cursor: pointer;
+}
+[data-testid="stSidebar"] [role="radiogroup"] label:hover {background: rgba(255,255,255,.08);}
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
+    background: rgba(255,255,255,.16); box-shadow: inset 3px 0 0 #F2B33D;
+}
+[data-testid="stSidebar"] [data-testid="stRadioOption"] > div > div:first-child:not([data-testid]),
+[data-testid="stSidebar"] label[data-baseweb="radio"] > div:first-child {display: none;}
+[data-testid="stSidebar"] [role="radiogroup"] label p {font-size: .98rem; font-weight: 500;}
+.kartu-model {
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); border-radius: 12px;
+    padding: 12px 14px; margin: .4rem 0 .8rem 0; font-size: .85rem;
+}
+.kartu-model b {color: #FFFFFF;}
+.kartu-model .titik {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4ADE80;
+    margin-right: 6px; box-shadow: 0 0 0 3px rgba(74,222,128,.25);
+}
+.kartu-model .baris {display: flex; justify-content: space-between; margin-top: 6px; color: #C7D8E8;}
+[data-testid="stSidebar"] .stButton button {
+    width: 100%; background: transparent; border: 1px solid rgba(255,255,255,.35); border-radius: 10px;
+}
+[data-testid="stSidebar"] .stButton button:hover {border-color: #F2B33D; color: #F2B33D;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -123,14 +167,31 @@ if "hasil" not in st.session_state:
 # ---------------------------------------------------------------------------
 # Sidebar
 # ---------------------------------------------------------------------------
-st.sidebar.title("🛣️ Deteksi Rumija")
-st.sidebar.caption("Dinas PU Bina Marga Provinsi Jawa Timur")
-halaman = st.sidebar.radio("Menu", ["Deteksi", "Peta", "Riwayat", "Tentang Model"])
+IKON_MENU = {"Deteksi": "🔍", "Peta": "🗺️", "Riwayat": "🗂️", "Tentang Model": "🧠"}
+
+st.sidebar.markdown("""
+<div class="merek">
+    <div class="logo">🛣️</div>
+    <div><b>Deteksi Rumija</b><span>Dinas PU Bina Marga Provinsi Jawa Timur</span></div>
+</div>""", unsafe_allow_html=True)
 st.sidebar.divider()
+
+st.sidebar.markdown('<div class="label-bagian">MENU</div>', unsafe_allow_html=True)
+halaman = st.sidebar.radio("Menu", list(IKON_MENU), format_func=lambda x: f"{IKON_MENU[x]}  {x}",
+                           label_visibility="collapsed")
+st.sidebar.divider()
+
+st.sidebar.markdown('<div class="label-bagian">PENGATURAN DETEKSI</div>', unsafe_allow_html=True)
 conf = st.sidebar.slider("Ambang keyakinan (confidence)", 0.05, 0.90, 0.25, 0.05,
                          help="Objek dengan skor keyakinan di bawah nilai ini tidak ditampilkan.")
 imgsz = st.sidebar.select_slider("Ukuran citra masukan model", [640, 960, 1280], value=ukuran_default)
-st.sidebar.caption(f"Model: `{nama_model}`")
+st.sidebar.markdown(f"""
+<div class="kartu-model">
+    <span class="titik"></span><b>Model aktif</b>
+    <div class="baris"><span>Nama</span><span>{nama_model}</span></div>
+    <div class="baris"><span>Arsitektur</span><span>YOLO11n</span></div>
+    <div class="baris"><span>Kelas</span><span>Reklame, Tiang</span></div>
+</div>""", unsafe_allow_html=True)
 if not pc.OCR_TERSEDIA:
     st.sidebar.warning("Tesseract OCR tidak ditemukan, sehingga koordinat dari overlay foto tidak dapat dibaca.")
 if st.sidebar.button("Hapus semua hasil"):
