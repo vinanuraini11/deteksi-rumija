@@ -5,14 +5,17 @@ Dinas PU Bina Marga Provinsi Jawa Timur
 Jalankan dari folder utama project:
     streamlit run app/app.py
 """
+import base64
 import sqlite3
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 
 import cv2
 import pandas as pd
 import pydeck as pdk
 import streamlit as st
+from PIL import Image
 from ultralytics import YOLO
 
 import pengolahan as pc
@@ -23,9 +26,12 @@ KANDIDAT_MODEL = [                                   # dipakai yang pertama dite
     ROOT / "models" / "raw" / "weights" / "best.pt",
     Path(__file__).resolve().parent / "best.pt",     # untuk versi deploy
 ]
+APP_DIR = Path(__file__).resolve().parent
+LOGO = APP_DIR / "logo_jatim.png"                    # logo Pemprov Jawa Timur
+BANNER = APP_DIR / "banner.jpg"                       # foto survei untuk latar banner
 DB_PATH = ROOT / "hasil_deteksi.db"                  # database hasil deteksi (tahap Load)
 
-st.set_page_config(page_title="Deteksi Pemanfaatan Rumija", page_icon="🛣️", layout="wide")
+st.set_page_config(page_title="Deteksi Pemanfaatan Rumija", page_icon=str(LOGO) if LOGO.exists() else "🛣️", layout="wide")
 
 # ---------------------------------------------------------------------------
 # Tampilan
@@ -34,6 +40,7 @@ st.markdown("""
 <style>
 .block-container {padding-top: 3.5rem; max-width: 1200px;}
 .hero {
+    min-height: 210px;
     background: linear-gradient(120deg, #123A5E 0%, #1F5F8B 60%, #2E86AB 100%);
     border-radius: 16px; padding: 28px 32px; margin-bottom: 1.4rem; color: #FFFFFF;
 }
@@ -68,8 +75,9 @@ st.markdown("""
 .merek .logo {
     width: 46px; height: 46px; border-radius: 12px; background: rgba(255,255,255,.12);
     border: 1px solid rgba(255,255,255,.22); display: flex; align-items: center; justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.5rem; flex-shrink: 0;
 }
+.merek .logo img {width: 34px; height: 34px; object-fit: contain;}
 .merek b {display: block; font-size: 1.2rem; color: #FFFFFF; line-height: 1.2;}
 .merek span {font-size: .78rem; color: #A9C2DA !important;}
 .label-bagian {
@@ -109,12 +117,30 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-def kepala(ikon, judul, deskripsi, lencana=()):
+@st.cache_data
+def gambar_b64(path):
+    """Mengubah file gambar menjadi teks base64 agar bisa ditampilkan di HTML."""
+    path = Path(path)
+    if not path.exists():
+        return None
+    if path.suffix.lower() == ".png":
+        return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode()
+    img = Image.open(path).convert("RGB")
+    img.thumbnail((1600, 1600))                      # diperkecil agar halaman tetap ringan
+    buf = BytesIO()
+    img.save(buf, format="JPEG", quality=80)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+def kepala(judul, deskripsi, lencana=()):
     """Menampilkan banner judul di bagian atas setiap halaman."""
     isi_lencana = "".join(f"<span>{x}</span>" for x in lencana)
+    foto = gambar_b64(BANNER)
+    latar = (f'style="background-image: linear-gradient(110deg, rgba(15,45,74,.95) 0%, rgba(22,70,111,.85) 45%, '
+             f'rgba(22,70,111,.15) 100%), url({foto}); background-size: cover; background-position: center;"'
+             if foto else "")
     st.markdown(f"""
-    <div class="hero">
-        <div class="ikon">{ikon}</div>
+    <div class="hero" {latar}>
         <h1>{judul}</h1>
         <p>{deskripsi}</p>
         {f'<div class="lencana">{isi_lencana}</div>' if lencana else ''}
@@ -167,11 +193,14 @@ if "hasil" not in st.session_state:
 # ---------------------------------------------------------------------------
 # Sidebar
 # ---------------------------------------------------------------------------
-IKON_MENU = {"Deteksi": "🔍", "Peta": "🗺️", "Riwayat": "🗂️", "Tentang Model": "🧠"}
+IKON_MENU = {"Deteksi": ":material/document_scanner:", "Peta": ":material/map:",
+             "Riwayat": ":material/database:", "Tentang Model": ":material/info:"}
 
-st.sidebar.markdown("""
+logo = gambar_b64(LOGO)
+isi_logo = f'<img src="{logo}" alt="Logo">' if logo else "🛣️"
+st.sidebar.markdown(f"""
 <div class="merek">
-    <div class="logo">🛣️</div>
+    <div class="logo">{isi_logo}</div>
     <div><b>Deteksi Rumija</b><span>Dinas PU Bina Marga Provinsi Jawa Timur</span></div>
 </div>""", unsafe_allow_html=True)
 st.sidebar.divider()
@@ -240,7 +269,7 @@ def proses_foto(nama, data_bytes):
 
 
 if halaman == "Deteksi":
-    kepala("🛣️", "Deteksi Pemanfaatan Rumija",
+    kepala("Deteksi Pemanfaatan Rumija",
            "Unggah foto survei jalan untuk mendeteksi reklame dan tiang utilitas secara otomatis. "
            "Koordinat lokasi dibaca dari teks pada foto atau dari data GPS kamera.",
            ["Model YOLO11n", "Pembacaan koordinat (OCR)", "Peta lokasi temuan", "Tersimpan di database"])
@@ -285,12 +314,12 @@ if halaman == "Deteksi":
                        "sebaiknya diperiksa ulang secara visual.")
 
         c1, c2 = st.columns(2)
-        c1.download_button("⬇️ Unduh ringkasan (CSV)", df.to_csv(index=False).encode("utf-8"),
-                           "ringkasan_deteksi_rumija.csv", "text/csv")
+        c1.download_button("Unduh ringkasan (CSV)", df.to_csv(index=False).encode("utf-8"),
+                           "ringkasan_deteksi_rumija.csv", "text/csv", icon=":material/download:")
         if st.session_state.objek:
-            c2.download_button("⬇️ Unduh detail objek (CSV)",
+            c2.download_button("Unduh detail objek (CSV)",
                                pd.DataFrame(st.session_state.objek).to_csv(index=False).encode("utf-8"),
-                               "detail_objek_rumija.csv", "text/csv")
+                               "detail_objek_rumija.csv", "text/csv", icon=":material/download:")
 
         st.subheader("Hasil deteksi")
         pilih = st.selectbox("Pilih foto", df["file"].tolist())
@@ -300,14 +329,14 @@ if halaman == "Deteksi":
                          f"Tiang utilitas: {baris['jumlah_tiang_utilitas']}")
 
     st.info("Hasil deteksi merupakan **kandidat** untuk diverifikasi petugas. Sistem tidak menentukan status izin "
-            "maupun memastikan objek berada di dalam batas Rumija.", icon="ℹ️")
+            "maupun memastikan objek berada di dalam batas Rumija.", icon=":material/info:")
 
 
 # ---------------------------------------------------------------------------
 # Halaman Peta
 # ---------------------------------------------------------------------------
 elif halaman == "Peta":
-    kepala("🗺️", "Peta Lokasi Temuan",
+    kepala("Peta Lokasi Temuan",
            "Sebaran lokasi foto yang memuat reklame dan tiang utilitas berdasarkan koordinat hasil pembacaan.")
     df = pd.DataFrame(st.session_state.hasil)
     if df.empty or df["lat"].notna().sum() == 0:
@@ -350,7 +379,7 @@ elif halaman == "Peta":
 # Halaman Riwayat (isi database)
 # ---------------------------------------------------------------------------
 elif halaman == "Riwayat":
-    kepala("🗂️", "Riwayat Deteksi", "Seluruh hasil deteksi yang telah tersimpan di database.")
+    kepala("Riwayat Deteksi", "Seluruh hasil deteksi yang telah tersimpan di database.")
     ringkas = baca_db("ringkasan")
     if ringkas.empty:
         st.info("Database masih kosong. Proses foto terlebih dahulu di menu **Deteksi**.")
@@ -361,8 +390,8 @@ elif halaman == "Riwayat":
         k3.metric("Total tiang utilitas", int(ringkas["jumlah_tiang_utilitas"].sum()))
         st.subheader("Ringkasan per foto")
         st.dataframe(ringkas, width="stretch", hide_index=True)
-        st.download_button("⬇️ Unduh riwayat (CSV)", ringkas.to_csv(index=False).encode("utf-8"),
-                           "riwayat_deteksi_rumija.csv", "text/csv")
+        st.download_button("Unduh riwayat (CSV)", ringkas.to_csv(index=False).encode("utf-8"),
+                           "riwayat_deteksi_rumija.csv", "text/csv", icon=":material/download:")
         objek_db = baca_db("objek")
         if not objek_db.empty:
             with st.expander("Detail objek terdeteksi"):
@@ -373,7 +402,7 @@ elif halaman == "Riwayat":
 # Halaman Tentang Model
 # ---------------------------------------------------------------------------
 else:
-    kepala("🧠", "Tentang Model", "Informasi model deteksi, data pelatihan, dan kinerjanya pada data uji.")
+    kepala("Tentang Model", "Informasi model deteksi, data pelatihan, dan kinerjanya pada data uji.")
     st.write("Model deteksi menggunakan **YOLO11n** yang dilatih pada foto survei ruas Kasian–Balung (Jember), "
              "Pandaan–Tretes, dan Sampang–Omben dengan dua kelas objek pemanfaatan Rumija:")
     st.markdown("- **Reklame**: papan iklan dan media informasi di tepi jalan (Permen PU No. 20/PRT/M/2010).\n"
