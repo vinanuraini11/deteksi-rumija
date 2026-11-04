@@ -117,12 +117,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-@st.cache_data
 def gambar_b64(path):
     """Mengubah file gambar menjadi teks base64 agar bisa ditampilkan di HTML."""
     path = Path(path)
     if not path.exists():
         return None
+    return _gambar_b64(str(path), path.stat().st_mtime)
+
+
+@st.cache_data
+def _gambar_b64(path, versi):
+    """Versi tersimpan (cache); ikut diperbarui otomatis kalau file gambarnya diganti."""
+    path = Path(path)
     if path.suffix.lower() == ".png":
         return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode()
     img = Image.open(path).convert("RGB")
