@@ -40,7 +40,6 @@ st.markdown("""
 <style>
 .block-container {padding-top: 3.5rem; max-width: 1200px;}
 .hero {
-    min-height: 210px;
     background: linear-gradient(120deg, #123A5E 0%, #1F5F8B 60%, #2E86AB 100%);
     border-radius: 16px; padding: 28px 32px; margin-bottom: 1.4rem; color: #FFFFFF;
 }
@@ -53,20 +52,21 @@ st.markdown("""
     border-radius: 999px; padding: 3px 12px; margin: 0 6px 6px 0; font-size: .82rem; color: #FFFFFF;
 }
 .langkah {
-    background: #FFFFFF; border: 1px solid #DDE5EE; border-radius: 14px; padding: 18px 20px; height: 100%;
-    box-shadow: 0 1px 3px rgba(18,58,94,.06);
+    background: rgba(31,95,139,.14); border: 1px solid rgba(31,95,139,.45); border-radius: 14px;
+    padding: 18px 20px; height: 100%;
 }
 .langkah .no {
     display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
-    border-radius: 50%; background: #1F5F8B; color: #FFFFFF; font-weight: 700; margin-bottom: .5rem;
+    border-radius: 50%; background: #F2B33D; color: #0F2D4A; font-weight: 700; margin-bottom: .5rem;
 }
-.langkah b {display: block; color: #123A5E; margin-bottom: .2rem;}
-.langkah span {color: #4A5A6A; font-size: .92rem;}
+.langkah b {display: block; color: #2E86C1; margin-bottom: .2rem;}
+.langkah span {color: #7F94A8; font-size: .92rem;}
 [data-testid="stMetric"] {
-    background: #FFFFFF; border: 1px solid #DDE5EE; border-left: 5px solid #1F5F8B;
-    border-radius: 12px; padding: 14px 18px; box-shadow: 0 1px 3px rgba(18,58,94,.06);
+    background: linear-gradient(135deg, #16466F 0%, #1F5F8B 100%); border: none; border-left: 5px solid #F2B33D;
+    border-radius: 12px; padding: 14px 18px; box-shadow: 0 2px 6px rgba(15,45,74,.25);
 }
-[data-testid="stMetricValue"] {color: #123A5E;}
+[data-testid="stMetricValue"], [data-testid="stMetricValue"] * {color: #FFFFFF !important; font-weight: 700;}
+[data-testid="stMetricLabel"], [data-testid="stMetricLabel"] * {color: #BFD3E6 !important;}
 /* ---------- Sidebar ---------- */
 [data-testid="stSidebar"] {background: linear-gradient(180deg, #0F2D4A 0%, #16466F 100%);}
 [data-testid="stSidebar"] * {color: #E6EEF6;}
@@ -337,7 +337,8 @@ if halaman == "Deteksi":
 # ---------------------------------------------------------------------------
 elif halaman == "Peta":
     kepala("Peta Lokasi Temuan",
-           "Sebaran lokasi foto yang memuat reklame dan tiang utilitas berdasarkan koordinat hasil pembacaan.")
+           "Sebaran lokasi foto yang memuat reklame dan tiang utilitas berdasarkan koordinat hasil pembacaan.",
+           ["Merah: ada reklame", "Biru: hanya tiang utilitas", "Ukuran titik: jumlah objek"])
     df = pd.DataFrame(st.session_state.hasil)
     if df.empty or df["lat"].notna().sum() == 0:
         st.info("Belum ada foto yang memiliki koordinat. Proses foto terlebih dahulu di menu **Deteksi**.")
@@ -379,7 +380,8 @@ elif halaman == "Peta":
 # Halaman Riwayat (isi database)
 # ---------------------------------------------------------------------------
 elif halaman == "Riwayat":
-    kepala("Riwayat Deteksi", "Seluruh hasil deteksi yang telah tersimpan di database.")
+    kepala("Riwayat Deteksi", "Seluruh hasil deteksi yang telah tersimpan di database.",
+           ["Database SQLite", "Data tetap tersimpan", "Dapat diunduh (CSV)"])
     ringkas = baca_db("ringkasan")
     if ringkas.empty:
         st.info("Database masih kosong. Proses foto terlebih dahulu di menu **Deteksi**.")
@@ -402,7 +404,8 @@ elif halaman == "Riwayat":
 # Halaman Tentang Model
 # ---------------------------------------------------------------------------
 else:
-    kepala("Tentang Model", "Informasi model deteksi, data pelatihan, dan kinerjanya pada data uji.")
+    kepala("Tentang Model", "Informasi model deteksi, data pelatihan, dan kinerjanya pada data uji.",
+           ["YOLO11n", "2 kelas objek", "Data latih: 3 ruas", "Data uji: ruas Banyuwangi"])
     st.write("Model deteksi menggunakan **YOLO11n** yang dilatih pada foto survei ruas Kasian–Balung (Jember), "
              "Pandaan–Tretes, dan Sampang–Omben dengan dua kelas objek pemanfaatan Rumija:")
     st.markdown("- **Reklame**: papan iklan dan media informasi di tepi jalan (Permen PU No. 20/PRT/M/2010).\n"
