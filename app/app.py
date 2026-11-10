@@ -344,13 +344,15 @@ if halaman == "Deteksi":
 elif halaman == "Peta":
     kepala("Peta Lokasi Temuan",
            "Sebaran lokasi foto yang memuat reklame dan tiang utilitas berdasarkan koordinat hasil pembacaan.",
-           ["Merah: ada reklame", "Biru: hanya tiang utilitas", "Ukuran titik: jumlah objek"])
+           ["Merah: reklame", "Biru: tiang utilitas", "Ungu: keduanya", "Label R/T: jumlah objek"])
     df = pd.DataFrame(st.session_state.hasil)
     if df.empty or df["lat"].notna().sum() == 0:
         st.info("Belum ada foto yang memiliki koordinat. Proses foto terlebih dahulu di menu **Deteksi**.")
     else:
         peta = df.dropna(subset=["lat", "lon"]).copy()
         def warna_titik(r):
+            if r["jumlah_reklame"] > 0 and r["jumlah_tiang_utilitas"] > 0:
+                return [148, 103, 189]      # ungu
             if r["jumlah_reklame"] > 0:
                 return [214, 39, 40]        # merah
             if r["jumlah_tiang_utilitas"] > 0:
@@ -358,6 +360,8 @@ elif halaman == "Peta":
             return [127, 127, 127]          # abu-abu
         peta["warna"] = peta.apply(warna_titik, axis=1)
         peta["radius"] = 15 + 5 * (peta["jumlah_reklame"] + peta["jumlah_tiang_utilitas"])
+        peta["label"] = ("R:" + peta["jumlah_reklame"].astype(int).astype(str)
+                         + "  T:" + peta["jumlah_tiang_utilitas"].astype(int).astype(str))
 
         lapisan = pdk.Layer(
             "ScatterplotLayer", data=peta, get_position="[lon, lat]",
@@ -366,15 +370,19 @@ elif halaman == "Peta":
             stroked=True, get_line_color=[255, 255, 255], line_width_min_pixels=2,
             pickable=True,
         )
+        lapisan_label = pdk.Layer(
+            "TextLayer", data=peta, get_position="[lon, lat]", get_text="label",
+            get_size=15, get_color=[0, 0, 0], get_pixel_offset=[0, -28],
+        )
         tampilan = pdk.ViewState(latitude=peta["lat"].mean(), longitude=peta["lon"].mean(),
                                  zoom=16 if len(peta) == 1 else 13)
         st.pydeck_chart(pdk.Deck(
-            layers=[lapisan], initial_view_state=tampilan,
+            layers=[lapisan, lapisan_label], initial_view_state=tampilan,
             map_style="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
             tooltip={"text": "{file}\nSTA {sta}\nReklame: {jumlah_reklame}\nTiang: {jumlah_tiang_utilitas}"},
         ))
-        st.markdown("🔴 Ada reklame &nbsp;&nbsp; 🔵 Hanya tiang utilitas &nbsp;&nbsp; ⚪ Tidak ada objek "
-                    "&nbsp;&nbsp;|&nbsp;&nbsp; Ukuran titik menunjukkan banyaknya objek.")
+        st.markdown("🔴 Reklame &nbsp;&nbsp; 🔵 Tiang utilitas &nbsp;&nbsp; 🟣 Reklame dan tiang utilitas "
+                    "&nbsp;&nbsp; ⚪ Tidak ada objek &nbsp;&nbsp;|&nbsp;&nbsp; R = jumlah reklame, T = jumlah tiang utilitas.")
         st.dataframe(peta[["file", "sta", "jumlah_reklame", "jumlah_tiang_utilitas", "lat", "lon", "sumber_lokasi"]],
                      width="stretch", hide_index=True)
         tanpa = len(df) - len(peta)
